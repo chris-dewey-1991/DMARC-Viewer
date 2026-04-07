@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com; font-src https://fonts.gstatic.com; connect-src 'self' https://ipwho.is https://ipapi.co; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self';">
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Client Report — DMARC Viewer</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -211,7 +212,10 @@ footer{border-top:1px solid var(--border);padding:1rem 2rem;font-family:var(--mo
     <div class="client-report" id="cr-content"></div>
   </div>
 </main>
-<footer>Nothing is stored or transmitted — all processing is local.</footer>
+<footer>
+  <span style="color:var(--text3);font-family:var(--mono);font-size:11px;">All processing is client-side only. No data leaves your browser.</span>
+  <a href="changelog.html" style="font-family:var(--mono);font-size:11px;color:var(--text3);text-decoration:none;padding:3px 10px;border:1px solid var(--border2);border-radius:99px;transition:all 0.15s;" onmouseover="this.style.color='var(--text)';this.style.borderColor='var(--border)'" onmouseout="this.style.color='var(--text3)';this.style.borderColor='var(--border2)'">changelog · v1.3.0</a>
+</footer>
 </div>
 
 <script>

@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com; font-src https://fonts.gstatic.com; connect-src 'self' https://ipwho.is https://ipapi.co; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self';">
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>DMARC Report Viewer</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
@@ -346,7 +347,10 @@ footer { border-top:1px solid var(--border); padding:1rem 2rem; font-family:var(
   </div>
 </main>
 
-<footer>All processing is client-side only. No data leaves your browser.</footer>
+<footer>
+  <span style="color:var(--text3);font-family:var(--mono);font-size:11px;">All processing is client-side only. No data leaves your browser.</span>
+  <a href="changelog.html" style="font-family:var(--mono);font-size:11px;color:var(--text3);text-decoration:none;padding:3px 10px;border:1px solid var(--border2);border-radius:99px;transition:all 0.15s;" onmouseover="this.style.color='var(--text)';this.style.borderColor='var(--border)'" onmouseout="this.style.color='var(--text3)';this.style.borderColor='var(--border2)'">changelog · v1.3.0</a>
+</footer>
 </div>
 
 <script>
@@ -362,6 +366,9 @@ const KNOWN_SENDERS = [
   {name:'Cloudflare Email', org:'Cloudflare Inc.', cls:'cloud', ranges:['103.21.244.','103.22.200.','104.16.','104.17.','104.18.','104.19.','104.20.','104.21.','104.22.','108.162.','141.101.','162.158.','172.64.','172.65.','172.66.','172.67.','188.114.96.','188.114.97.','188.114.98.','188.114.99.']},
   {name:'Tor Exit Node', org:'Tor Network', cls:'suspicious', ranges:['185.220.100.','185.220.101.','185.220.102.','185.220.103.','185.220.104.','185.130.']},
 ];
+
+// ── HTML escape helper (prevents XSS from crafted XML data) ──
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
 function lookupKnownSender(ip) {
   for (const s of KNOWN_SENDERS) {
@@ -551,7 +558,7 @@ function renderTabs() {
   const el = document.getElementById('report-tabs');
   if (allReports.length <= 1) { el.style.display = 'none'; return; }
   el.style.display = 'flex';
-  el.innerHTML = allReports.map((r,i) => '<div class="report-tab '+(i===activeIdx?'active':'')+'" onclick="switchReport('+i+')">'+r.domain+' · '+r.orgName+'</div>').join('');
+  el.innerHTML = allReports.map((r,i) => '<div class="report-tab '+(i===activeIdx?'active':'')+'" onclick="switchReport('+i+')">'+esc(r.domain)+' · '+esc(r.orgName)+'</div>').join('');
 }
 
 function switchReport(idx) { activeIdx = idx; renderTabs(); renderReport(allReports[idx]); }
@@ -580,9 +587,9 @@ function renderAlertCards(recs, cls) {
     const domain = encodeURIComponent(rec.headerFrom || '');
     const sel = rec.dkimResults.length && rec.dkimResults[0].selector ? encodeURIComponent(rec.dkimResults[0].selector) : '';
     const actionLinks = '<div class="action-links" style="margin-top:8px;">'+
-      (domain ? '<a href="tools.html?domain='+domain+'" target="_blank">Check SPF ↗</a>' : '')+
-      (domain && sel ? '<a href="tools.html?domain='+domain+'&selector='+sel+'" target="_blank">Check DKIM ↗</a>' : '')+
-      '<a href="https://www.abuseipdb.com/check/'+encodeURIComponent(rec.sourceIp)+'" target="_blank" class="ext">AbuseIPDB ↗</a>'+
+      (domain ? '<a href="tools.html?domain='+domain+'" target="_blank" rel="noopener noreferrer">Check SPF ↗</a>' : '')+
+      (domain && sel ? '<a href="tools.html?domain='+domain+'&selector='+sel+'" target="_blank" rel="noopener noreferrer">Check DKIM ↗</a>' : '')+
+      '<a href="https://www.abuseipdb.com/check/'+encodeURIComponent(rec.sourceIp)+'" target="_blank" rel="noopener noreferrer" class="ext">AbuseIPDB ↗</a>'+
     '</div>';
 
     return '<div class="alert-card '+cls+'">'+
@@ -700,10 +707,10 @@ function renderReport(r) {
     const sel    = rec.dkimResults.length && rec.dkimResults[0].selector ? encodeURIComponent(rec.dkimResults[0].selector) : '';
     const ip     = encodeURIComponent(rec.sourceIp);
     const actionLinks =
-      '<a href="tools.html?domain='+domain+'" target="_blank">SPF ↗</a>'+
-      (sel ? '<a href="tools.html?domain='+domain+'&selector='+sel+'" target="_blank">DKIM ↗</a>' : '')+
-      '<a href="https://www.abuseipdb.com/check/'+ip+'" target="_blank" class="ext">AbuseIPDB ↗</a>'+
-      '<a href="https://who.is/whois-ip/ip-address/'+ip+'" target="_blank" class="ext">WHOIS ↗</a>';
+      '<a href="tools.html?domain='+domain+'" target="_blank" rel="noopener noreferrer">SPF ↗</a>'+
+      (sel ? '<a href="tools.html?domain='+domain+'&selector='+sel+'" target="_blank" rel="noopener noreferrer">DKIM ↗</a>' : '')+
+      '<a href="https://www.abuseipdb.com/check/'+ip+'" target="_blank" rel="noopener noreferrer" class="ext">AbuseIPDB ↗</a>'+
+      '<a href="https://who.is/whois-ip/ip-address/'+ip+'" target="_blank" rel="noopener noreferrer" class="ext">WHOIS ↗</a>';
 
     return '<tr>'+
       '<td><span class="row-flag '+flagCls+'"></span><span class="ip-mono">'+rec.sourceIp+'</span><div id="'+lid+'"></div></td>'+
@@ -767,8 +774,8 @@ function renderReport(r) {
 
   const printHeader =
     '<div class="print-header">'+
-      '<h1>DMARC Report — '+r.domain+'</h1>'+
-      '<p>Reported by: '+r.orgName+' ('+r.email+') &nbsp;|&nbsp; Period: '+r.dateBegin+' – '+r.dateEnd+' &nbsp;|&nbsp; Report ID: '+r.reportId+'</p>'+
+      '<h1>DMARC Report — '+esc(r.domain)+'</h1>'+
+      '<p>Reported by: '+r.orgName+' ('+r.email+') &nbsp;|&nbsp; Period: '+r.dateBegin+' – '+r.dateEnd+' &nbsp;|&nbsp; Report ID: '+esc(r.reportId)+'</p>'+
       '<p>Pass rate: '+pct+'% &nbsp;|&nbsp; Total: '+total.toLocaleString()+' &nbsp;|&nbsp; Passed: '+passed.toLocaleString()+' &nbsp;|&nbsp; Failed: '+failed.toLocaleString()+' &nbsp;|&nbsp; Policy: p='+r.policyP+'</p>'+
       '<p style="margin-top:6px;font-size:10px;color:#888;">Generated '+new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})+'</p>'+
     '</div>';
@@ -780,7 +787,7 @@ function renderReport(r) {
         '<h2 style="font-size:22px;font-weight:400;letter-spacing:-0.01em;margin-bottom:4px;"><span style="color:var(--accent);font-weight:500;">'+r.domain+'</span></h2>'+
         '<div style="font-family:var(--mono);font-size:11px;color:var(--text3);display:flex;gap:1.5rem;flex-wrap:wrap;">'+
           '<span>from '+r.orgName+'</span><span>'+r.dateBegin+' – '+r.dateEnd+'</span>'+
-          '<span>ID: '+r.reportId.substring(0,24)+(r.reportId.length>24?'…':'')+'</span><span>'+r.email+'</span>'+
+          '<span>ID: '+r.reportId.substring(0,24)+(r.reportId.length>24?'…':'')+'</span><span>'+esc(r.email)+'</span>'+
         '</div>'+
       '</div>'+
     '</div>'+

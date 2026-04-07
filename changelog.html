@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com; font-src https://fonts.gstatic.com; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'none';">
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="robots" content="noindex">
+<title>Changelog — DMARC Viewer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0a0c10; --bg2:#111318; --bg3:#181b22;
+  --border:#1e2229; --border2:#252932;
+  --text:#e8eaf0; --text2:#8b90a0; --text3:#555b6a;
+  --accent:#00d4aa; --accent-dim:rgba(0,212,170,0.12); --accent-dim2:rgba(0,212,170,0.06);
+  --red:#ff4d6a; --red-dim:rgba(255,77,106,0.13);
+  --amber:#f5a623; --amber-dim:rgba(245,166,35,0.13);
+  --blue:#4d9fff; --blue-dim:rgba(77,159,255,0.1);
+  --purple:#a78bfa; --purple-dim:rgba(167,139,250,0.12);
+  --mono:'IBM Plex Mono',monospace; --sans:'IBM Plex Sans',sans-serif;
+  --r:6px; --rl:10px;
+}
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+body { font-family:var(--sans); background:var(--bg); color:var(--text); min-height:100vh; font-size:14px; line-height:1.6; }
+.app { display:flex; flex-direction:column; min-height:100vh; }
+
+header { border-bottom:1px solid var(--border); padding:0 2rem; height:56px; display:flex; align-items:center; justify-content:space-between; background:var(--bg); position:sticky; top:0; z-index:100; }
+.logo { display:flex; align-items:center; gap:10px; font-family:var(--mono); font-size:13px; font-weight:500; letter-spacing:0.05em; text-decoration:none; color:var(--text); }
+.logo-mark { width:28px; height:28px; background:var(--accent); border-radius:4px; display:flex; align-items:center; justify-content:center; }
+.logo-mark svg { width:16px; height:16px; }
+nav { display:flex; gap:2px; }
+.nav-link { font-family:var(--mono); font-size:12px; padding:6px 14px; border-radius:var(--r); color:var(--text2); text-decoration:none; transition:all 0.15s; border:1px solid transparent; }
+.nav-link:hover { background:var(--bg2); color:var(--text); }
+
+main { flex:1; max-width:820px; margin:0 auto; width:100%; padding:3rem 2rem; }
+
+.page-hero { margin-bottom:3rem; }
+.page-hero h1 { font-size:28px; font-weight:300; letter-spacing:-0.02em; margin-bottom:6px; }
+.page-hero h1 em { font-style:normal; color:var(--accent); }
+.page-hero p { color:var(--text2); font-size:14px; }
+
+/* Version entries */
+.version-entry { margin-bottom:2.5rem; position:relative; padding-left:1.5rem; }
+.version-entry::before { content:''; position:absolute; left:0; top:8px; bottom:-2.5rem; width:1px; background:var(--border2); }
+.version-entry:last-child::before { display:none; }
+
+.version-header { display:flex; align-items:center; gap:12px; margin-bottom:1rem; flex-wrap:wrap; }
+.version-tag { font-family:var(--mono); font-size:13px; font-weight:500; color:var(--accent); background:var(--accent-dim2); border:1px solid rgba(0,212,170,0.2); border-radius:var(--r); padding:3px 12px; }
+.version-tag.old { color:var(--text2); background:var(--bg2); border-color:var(--border2); }
+.version-date { font-family:var(--mono); font-size:11px; color:var(--text3); }
+.version-label { font-family:var(--mono); font-size:10px; padding:2px 8px; border-radius:99px; }
+.version-label.major { background:rgba(0,212,170,0.12); color:var(--accent); }
+.version-label.minor { background:var(--blue-dim); color:var(--blue); }
+.version-label.patch { background:var(--bg3); color:var(--text3); border:1px solid var(--border2); }
+.version-label.security { background:var(--red-dim); color:var(--red); }
+
+.version-title { font-size:16px; font-weight:500; margin-bottom:0.75rem; color:var(--text); }
+
+/* Change items */
+.changes { display:flex; flex-direction:column; gap:6px; }
+.change { display:flex; gap:10px; align-items:baseline; font-size:13px; }
+.change-type { font-family:var(--mono); font-size:10px; padding:1px 7px; border-radius:3px; flex-shrink:0; font-weight:500; white-space:nowrap; }
+.change-type.new    { background:rgba(0,212,170,0.12); color:var(--accent); }
+.change-type.fix    { background:var(--red-dim); color:var(--red); }
+.change-type.sec    { background:var(--red-dim); color:var(--red); border:1px solid rgba(255,77,106,0.3); }
+.change-type.impr   { background:var(--blue-dim); color:var(--blue); }
+.change-type.arch   { background:var(--purple-dim); color:var(--purple); }
+.change-text { color:var(--text2); line-height:1.55; }
+.change-text strong { color:var(--text); font-weight:500; }
+
+/* Section dividers within a version */
+.change-group { margin-bottom:1rem; }
+.change-group-label { font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:0.07em; color:var(--text3); margin-bottom:8px; padding-bottom:4px; border-bottom:1px solid var(--border); }
+
+/* Timeline dot */
+.version-dot { position:absolute; left:-4px; top:6px; width:9px; height:9px; border-radius:50%; background:var(--accent); border:2px solid var(--bg); flex-shrink:0; }
+.version-dot.old { background:var(--text3); }
+
+/* Current badge */
+.current-badge { font-family:var(--mono); font-size:10px; padding:2px 8px; background:var(--accent); color:#000; border-radius:99px; font-weight:500; }
+
+footer { border-top:1px solid var(--border); padding:1rem 2rem; font-family:var(--mono); font-size:11px; color:var(--text3); display:flex; align-items:center; justify-content:center; gap:1.5rem; flex-wrap:wrap; }
+footer a { color:var(--text3); text-decoration:none; }
+footer a:hover { color:var(--text2); }
+</style>
+</head>
+<body>
+<div class="app">
+
+<header>
+  <a class="logo" href="index.html">
+    <div class="logo-mark">
+      <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M8 2L14 5V11L8 14L2 11V5L8 2Z" stroke="#000" stroke-width="1.5" stroke-linejoin="round"/>
+        <path d="M8 2V8M8 8L14 5M8 8L2 5M8 8V14" stroke="#000" stroke-width="1" stroke-opacity="0.6"/>
+      </svg>
+    </div>
+    DMARC Viewer
+  </a>
+  <nav>
+    <a class="nav-link" href="index.html">Report Viewer</a>
+    <a class="nav-link" href="tools.html">DNS Tools</a>
+    <a class="nav-link" href="client.html">Client Report</a>
+  </nav>
+</header>
+
+<main>
+  <div class="page-hero">
+    <h1>Change<em>log</em></h1>
+    <p>Full history of updates, fixes, and new features — most recent first.</p>
+  </div>
+
+  <!-- ── v1.3.0 ── -->
+  <div class="version-entry">
+    <div class="version-dot"></div>
+    <div class="version-header">
+      <span class="version-tag">v1.3.0</span>
+      <span class="version-date">April 2026</span>
+      <span class="version-label security">Security</span>
+      <span class="current-badge">current</span>
+    </div>
+    <div class="version-title">Security hardening &amp; penetration testing</div>
+    <div class="changes">
+
+      <div class="change-group">
+        <div class="change-group-label">Security fixes</div>
+        <div class="change"><span class="change-type sec">SEC</span><span class="change-text"><strong>XSS via crafted XML</strong> — org name, domain, email and report ID from DMARC XML are now HTML-escaped with a dedicated <code>esc()</code> helper before any DOM insertion. A malicious report file could previously execute JavaScript in the browser.</span></div>
+        <div class="change"><span class="change-type sec">SEC</span><span class="change-text"><strong>SSRF in iplookup.php</strong> — removed <code>CURLOPT_FOLLOWLOCATION</code> and added a strict URL allowlist. PHP curl calls are now restricted to <code>ip-api.com</code> and <code>ipinfo.io</code> only, preventing server-side redirect to internal addresses.</span></div>
+        <div class="change"><span class="change-type sec">SEC</span><span class="change-text"><strong>DoS via recursive SPF includes</strong> — the SPF parser now hard-limits recursion to 4 levels and 20 total DNS calls, preventing a crafted domain from exhausting server resources.</span></div>
+        <div class="change"><span class="change-type sec">SEC</span><span class="change-text"><strong>Rate limiting</strong> — all three PHP endpoints now enforce per-IP rate limits (30–60 req/min) via APCu, with HTTP 429 responses on excess.</span></div>
+        <div class="change"><span class="change-type sec">SEC</span><span class="change-text"><strong>Domain format validation</strong> — stricter hostname regex now rejects double-dot labels (<code>example..com</code>), leading hyphens, and other malformed inputs. Private/reserved hostnames (<code>localhost</code>, <code>.local</code>, <code>.internal</code>) are explicitly blocked.</span></div>
+        <div class="change"><span class="change-type sec">SEC</span><span class="change-text"><strong>Security headers</strong> — added <code>X-Content-Type-Options: nosniff</code>, <code>X-Frame-Options: DENY</code>, and <code>Content-Security-Policy</code> to all PHP endpoints and HTML pages.</span></div>
+        <div class="change"><span class="change-type sec">SEC</span><span class="change-text"><strong>Tab hijacking</strong> — all <code>target="_blank"</code> links now include <code>rel="noopener noreferrer"</code>.</span></div>
+        <div class="change"><span class="change-type sec">SEC</span><span class="change-text"><strong>DKIM tag sanitisation</strong> — DNS-derived DKIM tag values are now sanitised before inclusion in JSON output. <code>json_encode()</code> called with <code>JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT</code> flags.</span></div>
+      </div>
+
+      <div class="change-group">
+        <div class="change-group-label">New files</div>
+        <div class="change"><span class="change-type new">NEW</span><span class="change-text"><strong>nginx-security.conf</strong> — ready-to-use nginx snippet with HSTS, full CSP, PHP file whitelist, and rate limiting zones.</span></div>
+        <div class="change"><span class="change-type new">NEW</span><span class="change-text"><strong>.htaccess</strong> — Apache/cPanel equivalent with security headers, PHP file whitelist, and hidden file blocking.</span></div>
+        <div class="change"><span class="change-type new">NEW</span><span class="change-text"><strong>SECURITY.md</strong> — deployment security checklist, SRI hash generation instructions, pentest summary table, and data privacy notes.</span></div>
+        <div class="change"><span class="change-type new">NEW</span><span class="change-text"><strong>changelog.html</strong> — this page. Separate file for easy maintenance without touching application code.</span></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── v1.2.0 ── -->
+  <div class="version-entry">
+    <div class="version-dot old"></div>
+    <div class="version-header">
+      <span class="version-tag old">v1.2.0</span>
+      <span class="version-date">April 2026</span>
+      <span class="version-label major">Major</span>
+    </div>
+    <div class="version-title">Multi-page architecture, DNS tools &amp; client report</div>
+    <div class="changes">
+
+      <div class="change-group">
+        <div class="change-group-label">New pages</div>
+        <div class="change"><span class="change-type new">NEW</span><span class="change-text"><strong>DNS Tools page</strong> (<code>tools.html</code>) — live SPF record checker parses all mechanisms, expands <code>include:</code> chains, counts DNS lookups against the 10-lookup limit, and flags issues. DKIM selector checker looks up keys, shows type, bit-length, revocation status, and testing mode flag.</span></div>
+        <div class="change"><span class="change-type new">NEW</span><span class="change-text"><strong>Client Report page</strong> (<code>client.html</code>) — generates a clean non-technical summary with pass rate gauge, plain-English status, sender list, and auto-generated action items. Supports optional client name, technician notes, and Print / Save as PDF.</span></div>
+      </div>
+
+      <div class="change-group">
+        <div class="change-group-label">Report Viewer enhancements</div>
+        <div class="change"><span class="change-type new">NEW</span><span class="change-text"><strong>Actions column</strong> in sources table — per-row quick links to SPF check, DKIM check (selector pre-filled), AbuseIPDB reputation lookup, and WHOIS. DNS Tools page opens with domain and selector pre-populated.</span></div>
+        <div class="change"><span class="change-type new">NEW</span><span class="change-text"><strong>Pass rate trend chart</strong> — automatically appears when two or more reports are loaded, showing pass rate over time using Chart.js.</span></div>
+        <div class="change"><span class="change-type new">NEW</span><span class="change-text"><strong>Technician notes</strong> — freeform text area per report, auto-saved to browser localStorage keyed by report ID. Persists across sessions.</span></div>
+        <div class="change"><span class="change-type new">NEW</span><span class="change-text"><strong>CSV export</strong> — downloads all source rows including sender label, diagnosis text, auth detail, and override reasons.</span></div>
+        <div class="change"><span class="change-type new">NEW</span><span class="change-text"><strong>Print / Save as PDF</strong> — clean A4 landscape print stylesheet hides all UI chrome, preserves colour coding, and adds a formatted report header.</span></div>
+        <div class="change"><span class="change-type new">NEW</span><span class="change-text"><strong>Navigation bar</strong> — links all three pages with active state indicator.</span></div>
+      </div>
+
+      <div class="change-group">
+        <div class="change-group-label">Server-side</div>
+        <div class="change"><span class="change-type new">NEW</span><span class="change-text"><strong>spf-lookup.php</strong> — server-side SPF DNS resolver with recursive include expansion.</span></div>
+        <div class="change"><span class="change-type new">NEW</span><span class="change-text"><strong>dkim-lookup.php</strong> — server-side DKIM selector lookup with key strength estimation.</span></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── v1.1.0 ── -->
+  <div class="version-entry">
+    <div class="version-dot old"></div>
+    <div class="version-header">
+      <span class="version-tag old">v1.1.0</span>
+      <span class="version-date">April 2026</span>
+      <span class="version-label minor">Minor</span>
+    </div>
+    <div class="version-title">IP lookup, sender recognition &amp; tech diagnostics</div>
+    <div class="changes">
+
+      <div class="change-group">
+        <div class="change-group-label">IP lookup</div>
+        <div class="change"><span class="change-type new">NEW</span><span class="change-text"><strong>iplookup.php proxy</strong> — server-side IP lookup avoids browser CORS restrictions. Queries ip-api.com with ipinfo.io fallback.</span></div>
+        <div class="change"><span class="change-type new">NEW</span><span class="change-text"><strong>Known sender database</strong> — built-in recognition of Google Workspace, Microsoft 365, Amazon SES, SendGrid, Mailchimp/Mandrill, Mailgun, Postmark, Cloudflare, and Tor exit nodes. Resolves instantly without a network call.</span></div>
+        <div class="change"><span class="change-type new">NEW</span><span class="change-text"><strong>Sender badge</strong> displayed under each source IP — colour-coded green (known ESP), blue (cloud/CDN), red (suspicious), grey (live lookup).</span></div>
+        <div class="change"><span class="change-type fix">FIX</span><span class="change-text"><strong>ZIP file support</strong> — added JSZip library. Reports delivered as <code>.zip</code> containing <code>.xml</code> or <code>.xml.gz</code> now load correctly. Previous version threw an error for all ZIP files.</span></div>
+      </div>
+
+      <div class="change-group">
+        <div class="change-group-label">Diagnostic detail</div>
+        <div class="change"><span class="change-type new">NEW</span><span class="change-text"><strong>Plain-English diagnosis</strong> per source row — distinguishes DKIM signature failure, DKIM alignment mismatch, SPF fail, SPF alignment mismatch, SPF softfail, temperror, permerror, and missing records.</span></div>
+        <div class="change"><span class="change-type new">NEW</span><span class="change-text"><strong>Alert cards</strong> — failing and partial-pass sources surfaced above the table in red/amber cards with full detail so techs don't have to scan rows.</span></div>
+        <div class="change"><span class="change-type new">NEW</span><span class="change-text"><strong>Policy override reasons</strong> — <code>reason</code> elements (forwarding, mailing list, local policy) shown as purple tags.</span></div>
+        <div class="change"><span class="change-type new">NEW</span><span class="change-text"><strong>Granular auth result codes</strong> — <code>softfail</code>, <code>temperror</code>, <code>permerror</code>, <code>neutral</code> shown with distinct pill colours rather than collapsed to pass/fail.</span></div>
+        <div class="change"><span class="change-type new">NEW</span><span class="change-text"><strong>DKIM selector displayed</strong> — full <code>d=</code> domain and <code>s=</code> selector shown in auth detail column.</span></div>
+        <div class="change"><span class="change-type new">NEW</span><span class="change-text"><strong>Envelope-from shown separately</strong> — only displayed when it differs from header-from, the key indicator of SPF alignment failures.</span></div>
+      </div>
+
+      <div class="change-group">
+        <div class="change-group-label">UI</div>
+        <div class="change"><span class="change-type new">NEW</span><span class="change-text"><strong>"How to read this report" panel</strong> — collapsible info panel explaining report flow (receiver → domain owner), key field definitions, and DKIM vs SPF alignment distinction.</span></div>
+        <div class="change"><span class="change-type new">NEW</span><span class="change-text"><strong>Row status indicators</strong> — green/amber/red dot per row for instant visual triage.</span></div>
+        <div class="change"><span class="change-type new">NEW</span><span class="change-text"><strong>Sender legend</strong> — colour key above the sources table explaining badge colours.</span></div>
+        <div class="change"><span class="change-type new">NEW</span><span class="change-text"><strong>Multi-report tabs</strong> — load multiple files and switch between them with a tab bar.</span></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── v1.0.0 ── -->
+  <div class="version-entry">
+    <div class="version-dot old"></div>
+    <div class="version-header">
+      <span class="version-tag old">v1.0.0</span>
+      <span class="version-date">April 2026</span>
+      <span class="version-label major">Major</span>
+    </div>
+    <div class="version-title">Initial release — core report viewer</div>
+    <div class="changes">
+      <div class="change"><span class="change-type new">NEW</span><span class="change-text"><strong>DMARC XML report parser</strong> — reads and parses DMARC aggregate report XML in the browser, fully client-side.</span></div>
+      <div class="change"><span class="change-type new">NEW</span><span class="change-text"><strong>File input</strong> — drag-and-drop or browse for <code>.xml</code> and <code>.xml.gz</code> (gzip) report files, plus paste raw XML directly.</span></div>
+      <div class="change"><span class="change-type new">NEW</span><span class="change-text"><strong>Summary statistics</strong> — total messages, passed, failed, and pass rate with colour-coded health status.</span></div>
+      <div class="change"><span class="change-type new">NEW</span><span class="change-text"><strong>Policy published section</strong> — displays p=, sp=, DKIM/SPF alignment mode, pct=, and reporting organisation.</span></div>
+      <div class="change"><span class="change-type new">NEW</span><span class="change-text"><strong>Source table</strong> — per-IP breakdown of DKIM aligned, SPF aligned, disposition, header-from, envelope-from, and raw auth results.</span></div>
+      <div class="change"><span class="change-type new">NEW</span><span class="change-text"><strong>Dark theme UI</strong> — IBM Plex Sans / IBM Plex Mono typography, fully responsive layout.</span></div>
+      <div class="change"><span class="change-type new">NEW</span><span class="change-text"><strong>Privacy-first</strong> — no data transmitted, no analytics, no accounts. Entire viewer runs in the browser.</span></div>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  <span>DMARC Viewer</span>
+  <a href="index.html">Report Viewer</a>
+  <a href="tools.html">DNS Tools</a>
+  <a href="client.html">Client Report</a>
+  <a href="SECURITY.md">Security</a>
+</footer>
+
+</div>
+</body>
+</html>

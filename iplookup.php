@@ -1,57 +1,80 @@
 <?php
 /**
  * iplookup.php — DMARC Viewer IP lookup proxy
- * Place alongside index.html on your web server.
- * Requires: PHP 7.4+, allow_url_fopen or curl enabled.
+ * Security hardened: input validation, no SSRF, rate-limit headers, no redirect following.
  */
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
-header('Cache-Control: public, max-age=86400'); // cache 24h per IP
+header('Cache-Control: public, max-age=86400');
+header('X-Content-Type-Options: nosniff');
+header('X-Frame-Options: DENY');
+header("Content-Security-Policy: default-src 'self'; script-src 'none'; style-src 'none'; object-src 'none'; frame-ancestors 'none'");
+header("Content-Security-Policy: default-src 'self'; frame-ancestors 'none';");
 
-// Validate input
+// ── Simple per-IP rate limiting using APCu (if available) ──
+$caller_ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+if (function_exists('apcu_fetch')) {
+    $rate_key = 'dmarc_iplookup_' . md5($caller_ip);
+    $hits = apcu_fetch($rate_key) ?: 0;
+    if ($hits > 60) { // 60 requests per minute
+        http_response_code(429);
+        echo json_encode(['error' => 'Rate limit exceeded. Please slow down.']);
+        exit;
+    }
+    apcu_store($rate_key, $hits + 1, 60);
+}
+
+// ── Validate input ──
 $ip = isset($_GET['ip']) ? trim($_GET['ip']) : '';
-
 if (!filter_var($ip, FILTER_VALIDATE_IP)) {
-    echo json_encode(['error' => 'Invalid IP']);
+    http_response_code(400);
+    echo json_encode(['error' => 'Invalid IP address']);
     exit;
 }
 
-// Skip private/reserved ranges — return immediately
-$private = filter_var($ip, FILTER_VALIDATE_IP,
-    FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE);
-if ($private === false) {
+// ── Skip private / reserved ranges ──
+if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
     echo json_encode(['org' => 'Internal network', 'country' => '', 'city' => '', 'isp' => '']);
     exit;
 }
 
-// Try ip-api.com (free, 45 req/min, works perfectly server-side)
-$url = 'http://ip-api.com/json/' . urlencode($ip) . '?fields=status,org,isp,country,city,as';
-$data = null;
+// ── Safe cURL helper — no redirect following, strict SSL, timeout ──
+function safe_curl(string $url, int $timeout = 5): ?array {
+    if (!function_exists('curl_init')) return null;
 
-if (function_exists('curl_init')) {
+    // Only allow HTTPS (or the specific HTTP endpoint we control)
+    if (!preg_match('#^https?://(?:ip-api\.com|ipinfo\.io)/#', $url)) return null;
+
     $ch = curl_init($url);
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT        => 5,
-        CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_SSL_VERIFYPEER => true,
+        CURLOPT_TIMEOUT        => $timeout,
+        CURLOPT_CONNECTTIMEOUT => 3,
+        CURLOPT_FOLLOWLOCATION => false,   // Never follow redirects (SSRF prevention)
+        CURLOPT_SSL_VERIFYPEER => true,    // Always verify SSL
+        CURLOPT_SSL_VERIFYHOST => 2,
         CURLOPT_USERAGENT      => 'DMARC-Viewer/1.0',
+        CURLOPT_PROTOCOLS      => CURLPROTO_HTTP | CURLPROTO_HTTPS,
+        CURLOPT_MAXREDIRS      => 0,
     ]);
     $body = curl_exec($ch);
     $err  = curl_error($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
-    if (!$err && $body) $data = json_decode($body, true);
-} elseif (ini_get('allow_url_fopen')) {
-    $ctx  = stream_context_create(['http' => ['timeout' => 5]]);
-    $body = @file_get_contents($url, false, $ctx);
-    if ($body) $data = json_decode($body, true);
+
+    if ($err || $code !== 200 || !$body) return null;
+    $data = json_decode($body, true);
+    return is_array($data) ? $data : null;
 }
 
-if ($data && isset($data['status']) && $data['status'] === 'success') {
+// ── Primary: ip-api.com ──
+$ip_encoded = urlencode($ip);
+$data = safe_curl("http://ip-api.com/json/{$ip_encoded}?fields=status,org,isp,country,city,as");
+if ($data && ($data['status'] ?? '') === 'success') {
     echo json_encode([
-        'org'     => $data['org']  ?? $data['isp'] ?? '',
-        'isp'     => $data['isp']  ?? '',
+        'org'     => $data['org']     ?? $data['isp'] ?? '',
+        'isp'     => $data['isp']     ?? '',
         'country' => $data['country'] ?? '',
         'city'    => $data['city']    ?? '',
         'as'      => $data['as']      ?? '',
@@ -59,26 +82,12 @@ if ($data && isset($data['status']) && $data['status'] === 'success') {
     exit;
 }
 
-// Fallback: ipinfo.io (also server-side friendly, 50k/month free)
-$url2 = 'https://ipinfo.io/' . urlencode($ip) . '/json';
-$data2 = null;
-if (function_exists('curl_init')) {
-    $ch = curl_init($url2);
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT        => 5,
-        CURLOPT_SSL_VERIFYPEER => true,
-        CURLOPT_USERAGENT      => 'DMARC-Viewer/1.0',
-    ]);
-    $body2 = curl_exec($ch);
-    curl_close($ch);
-    if ($body2) $data2 = json_decode($body2, true);
-}
-
+// ── Fallback: ipinfo.io ──
+$data2 = safe_curl("https://ipinfo.io/{$ip_encoded}/json");
 if ($data2 && !isset($data2['error'])) {
     echo json_encode([
-        'org'     => $data2['org']  ?? '',
-        'isp'     => $data2['org']  ?? '',
+        'org'     => $data2['org']     ?? '',
+        'isp'     => $data2['org']     ?? '',
         'country' => $data2['country'] ?? '',
         'city'    => $data2['city']    ?? '',
         'as'      => $data2['org']     ?? '',
@@ -86,5 +95,4 @@ if ($data2 && !isset($data2['error'])) {
     exit;
 }
 
-// Nothing worked
 echo json_encode(['error' => 'Lookup failed', 'org' => '', 'country' => '', 'city' => '']);
