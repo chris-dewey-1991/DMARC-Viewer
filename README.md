@@ -4,6 +4,9 @@ A fast, privacy-first, open-source DMARC report analyzer with built-in DNS tools
 
 Parse DMARC XML reports directly in your browser, investigate sending sources, and generate clean client summaries — all without sending data anywhere.
 
+<img width="1234" height="808" alt="image" src="https://github.com/user-attachments/assets/3abd7a32-e94d-4492-b301-1d7170340874" />
+
+
 ---
 
 ## Open Source & Free
