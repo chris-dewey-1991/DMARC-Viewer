@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>DNS Tools — DMARC Viewer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0a0c10;--bg2:#111318;--bg3:#181b22;
+  --border:#1e2229;--border2:#252932;
+  --text:#e8eaf0;--text2:#8b90a0;--text3:#555b6a;
+  --accent:#00d4aa;--accent-dim:rgba(0,212,170,0.12);--accent-dim2:rgba(0,212,170,0.06);
+  --red:#ff4d6a;--red-dim:rgba(255,77,106,0.13);
+  --amber:#f5a623;--amber-dim:rgba(245,166,35,0.13);
+  --blue:#4d9fff;--blue-dim:rgba(77,159,255,0.1);
+  --purple:#a78bfa;--purple-dim:rgba(167,139,250,0.12);
+  --mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif;
+  --r:6px;--rl:10px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;line-height:1.6;}
+.app{display:flex;flex-direction:column;min-height:100vh;}
+
+header{border-bottom:1px solid var(--border);padding:0 2rem;height:56px;display:flex;align-items:center;justify-content:space-between;background:var(--bg);position:sticky;top:0;z-index:100;}
+.logo{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:13px;font-weight:500;letter-spacing:0.05em;text-decoration:none;color:var(--text);}
+.logo-mark{width:28px;height:28px;background:var(--accent);border-radius:4px;display:flex;align-items:center;justify-content:center;}
+.logo-mark svg{width:16px;height:16px;}
+nav{display:flex;gap:2px;}
+.nav-link{font-family:var(--mono);font-size:12px;padding:6px 14px;border-radius:var(--r);color:var(--text2);text-decoration:none;transition:all 0.15s;border:1px solid transparent;}
+.nav-link:hover{background:var(--bg2);color:var(--text);}
+.nav-link.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent);}
+
+main{flex:1;max-width:1100px;margin:0 auto;width:100%;padding:2rem;}
+
+.page-title{font-size:24px;font-weight:300;letter-spacing:-0.02em;margin-bottom:6px;}
+.page-title em{font-style:normal;color:var(--accent);}
+.page-sub{color:var(--text2);font-size:14px;margin-bottom:2rem;}
+
+.tools-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;}
+@media(max-width:800px){.tools-grid{grid-template-columns:1fr;}}
+
+.tool-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;}
+.tool-card-header{padding:16px 20px;border-bottom:1px solid var(--border);}
+.tool-card-title{font-size:15px;font-weight:500;margin-bottom:3px;display:flex;align-items:center;gap:8px;}
+.tool-card-title .tc-icon{width:22px;height:22px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:12px;}
+.tool-card-title .tc-icon.spf{background:var(--accent-dim);color:var(--accent);}
+.tool-card-title .tc-icon.dkim{background:var(--blue-dim);color:var(--blue);}
+.tool-card-desc{font-size:12px;color:var(--text2);}
+.tool-card-body{padding:16px 20px;}
+
+.input-row{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
+.input-group{display:flex;flex-direction:column;gap:4px;flex:1;min-width:120px;}
+.input-label{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:var(--text3);}
+input[type=text]{background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);color:var(--text);font-family:var(--mono);font-size:13px;padding:8px 12px;outline:none;transition:border-color 0.2s;width:100%;}
+input[type=text]:focus{border-color:var(--accent);}
+input[type=text]::placeholder{color:var(--text3);}
+
+.btn{padding:8px 20px;border-radius:var(--r);font-family:var(--sans);font-size:13px;font-weight:500;cursor:pointer;border:none;transition:opacity 0.15s,transform 0.1s;white-space:nowrap;}
+.btn:active{transform:scale(0.98);}
+.btn-primary{background:var(--accent);color:#000;}
+.btn-primary:hover{opacity:0.9;}
+.btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--border2);}
+.btn-ghost:hover{background:var(--bg3);color:var(--text);}
+.btn-sm{padding:5px 12px;font-size:12px;}
+
+.result-area{margin-top:4px;}
+.result-loading{font-family:var(--mono);font-size:12px;color:var(--text3);padding:12px 0;display:none;}
+.result-error{background:var(--red-dim);border:1px solid rgba(255,77,106,0.25);border-radius:var(--r);color:var(--red);padding:10px 14px;font-size:13px;margin-top:8px;display:none;}
+.result-box{margin-top:8px;display:none;}
+
+/* SPF results */
+.spf-raw{font-family:var(--mono);font-size:11px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);padding:10px 12px;word-break:break-all;color:var(--text2);margin-bottom:12px;}
+.spf-stats{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;}
+.spf-stat{background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);padding:6px 12px;font-size:12px;}
+.spf-stat .sv{font-weight:500;font-family:var(--mono);}
+.spf-stat .sv.ok{color:var(--accent);}
+.spf-stat .sv.warn{color:var(--amber);}
+.spf-stat .sv.bad{color:var(--red);}
+.warning-list{display:flex;flex-direction:column;gap:6px;margin-bottom:12px;}
+.warning-item{background:var(--amber-dim);border:1px solid rgba(245,166,35,0.25);border-radius:var(--r);padding:8px 12px;font-size:12px;color:var(--amber);}
+.warning-item.err{background:var(--red-dim);border-color:rgba(255,77,106,0.25);color:var(--red);}
+.mech-tree{display:flex;flex-direction:column;gap:3px;}
+.mech{font-family:var(--mono);font-size:11px;border-radius:var(--r);padding:5px 10px;display:flex;align-items:flex-start;gap:8px;border:1px solid var(--border2);background:var(--bg3);}
+.mech.depth-1{margin-left:16px;background:var(--bg2);}
+.mech.depth-2{margin-left:32px;background:var(--bg);}
+.mech-qualifier{font-weight:500;flex-shrink:0;}
+.mech-qualifier.pass{color:var(--accent);}
+.mech-qualifier.softfail{color:var(--amber);}
+.mech-qualifier.fail{color:var(--red);}
+.mech-qualifier.neutral{color:var(--text3);}
+.mech-type{color:var(--blue);flex-shrink:0;}
+.mech-value{color:var(--text2);flex:1;word-break:break-all;}
+.mech-badge{font-size:9px;padding:1px 5px;border-radius:2px;flex-shrink:0;}
+.mech-badge.inc{background:var(--accent-dim);color:var(--accent);}
+.mech-badge.warn{background:var(--amber-dim);color:var(--amber);}
+.mech-badge.err{background:var(--red-dim);color:var(--red);}
+.mech-resolved-toggle{font-size:10px;color:var(--text3);cursor:pointer;padding:2px 6px;border-radius:2px;border:1px solid var(--border2);background:var(--bg2);margin-left:auto;flex-shrink:0;}
+.mech-resolved-toggle:hover{color:var(--text);}
+.mech-children{display:none;}
+.mech-children.open{display:block;}
+
+/* DKIM results */
+.dkim-status{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:var(--r);margin-bottom:12px;border:1px solid;}
+.dkim-status.ok{background:var(--accent-dim2);border-color:rgba(0,212,170,0.2);}
+.dkim-status.warn{background:var(--amber-dim);border-color:rgba(245,166,35,0.2);}
+.dkim-status.err{background:var(--red-dim);border-color:rgba(255,77,106,0.2);}
+.dkim-status-icon{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+.dkim-status.ok .dkim-status-icon{background:rgba(0,212,170,0.2);}
+.dkim-status.warn .dkim-status-icon{background:rgba(245,166,35,0.2);}
+.dkim-status.err .dkim-status-icon{background:rgba(255,77,106,0.2);}
+.dkim-fields{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
+.dkim-field{background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);padding:8px 12px;}
+.dkim-field-label{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:0.06em;color:var(--text3);margin-bottom:3px;}
+.dkim-field-value{font-family:var(--mono);font-size:12px;font-weight:500;word-break:break-all;}
+.dkim-field-value.ok{color:var(--accent);}
+.dkim-field-value.warn{color:var(--amber);}
+.dkim-field-value.bad{color:var(--red);}
+.dkim-raw{font-family:var(--mono);font-size:10px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);padding:10px 12px;word-break:break-all;color:var(--text3);margin-bottom:8px;}
+
+/* Quick check strip */
+.quick-checks{border-top:1px solid var(--border);margin-top:2rem;padding-top:2rem;}
+.qc-title{font-size:13px;font-weight:500;margin-bottom:12px;color:var(--text2);}
+.qc-chips{display:flex;flex-wrap:wrap;gap:6px;}
+.qc-chip{font-family:var(--mono);font-size:11px;padding:4px 12px;border-radius:99px;border:1px solid var(--border2);background:var(--bg2);color:var(--text3);cursor:pointer;transition:all 0.15s;}
+.qc-chip:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-dim2);}
+
+footer{border-top:1px solid var(--border);padding:1rem 2rem;font-family:var(--mono);font-size:11px;color:var(--text3);text-align:center;}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+  <a class="logo" href="index.html">
+    <div class="logo-mark">
+      <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M8 2L14 5V11L8 14L2 11V5L8 2Z" stroke="#000" stroke-width="1.5" stroke-linejoin="round"/>
+        <path d="M8 2V8M8 8L14 5M8 8L2 5M8 8V14" stroke="#000" stroke-width="1" stroke-opacity="0.6"/>
+      </svg>
+    </div>
+    DMARC Viewer
+  </a>
+  <nav>
+    <a class="nav-link" href="index.html">Report Viewer</a>
+    <a class="nav-link active" href="tools.html">DNS Tools</a>
+    <a class="nav-link" href="client.html">Client Report</a>
+  </nav>
+</header>
+
+<main>
+  <div class="page-title">DNS <em>Tools</em></div>
+  <div class="page-sub">Live SPF and DKIM record lookups — check what's actually published in DNS right now.</div>
+
+  <div class="tools-grid">
+
+    <!-- SPF Checker -->
+    <div class="tool-card">
+      <div class="tool-card-header">
+        <div class="tool-card-title">
+          <div class="tc-icon spf">S</div>
+          SPF Record Checker
+        </div>
+        <div class="tool-card-desc">Fetches the SPF TXT record, parses all mechanisms, counts DNS lookups, and flags issues.</div>
+      </div>
+      <div class="tool-card-body">
+        <div class="input-row">
+          <div class="input-group" style="flex:2">
+            <div class="input-label">Domain</div>
+            <input type="text" id="spf-domain" placeholder="example.com" onkeydown="if(event.key==='Enter')checkSPF()"/>
+          </div>
+          <div style="display:flex;align-items:flex-end;">
+            <button class="btn btn-primary" onclick="checkSPF()">Check SPF</button>
+          </div>
+        </div>
+        <div class="result-loading" id="spf-loading">Looking up DNS records…</div>
+        <div class="result-error" id="spf-error"></div>
+        <div class="result-box" id="spf-result"></div>
+
+        <div class="quick-checks">
+          <div class="qc-title">Common domains to check</div>
+          <div class="qc-chips">
+            <div class="qc-chip" onclick="quickSPF('gmail.com')">gmail.com</div>
+            <div class="qc-chip" onclick="quickSPF('outlook.com')">outlook.com</div>
+            <div class="qc-chip" onclick="quickSPF('sendgrid.net')">sendgrid.net</div>
+            <div class="qc-chip" onclick="quickSPF('amazonses.com')">amazonses.com</div>
+            <div class="qc-chip" onclick="quickSPF('mailchimp.com')">mailchimp.com</div>
+            <div class="qc-chip" onclick="quickSPF('mailgun.org')">mailgun.org</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DKIM Checker -->
+    <div class="tool-card">
+      <div class="tool-card-header">
+        <div class="tool-card-title">
+          <div class="tc-icon dkim">D</div>
+          DKIM Selector Checker
+        </div>
+        <div class="tool-card-desc">Looks up a DKIM selector record, checks key presence, type, bit-length, and flags revoked or weak keys.</div>
+      </div>
+      <div class="tool-card-body">
+        <div class="input-row">
+          <div class="input-group" style="flex:2">
+            <div class="input-label">Domain</div>
+            <input type="text" id="dkim-domain" placeholder="example.com" onkeydown="if(event.key==='Enter')checkDKIM()"/>
+          </div>
+          <div class="input-group">
+            <div class="input-label">Selector</div>
+            <input type="text" id="dkim-selector" placeholder="google" onkeydown="if(event.key==='Enter')checkDKIM()"/>
+          </div>
+          <div style="display:flex;align-items:flex-end;">
+            <button class="btn btn-primary" onclick="checkDKIM()">Check</button>
+          </div>
+        </div>
+        <div class="result-loading" id="dkim-loading">Looking up DNS records…</div>
+        <div class="result-error" id="dkim-error"></div>
+        <div class="result-box" id="dkim-result"></div>
+
+        <div class="quick-checks">
+          <div class="qc-title">Common selectors to try</div>
+          <div class="qc-chips">
+            <div class="qc-chip" onclick="quickDKIM('google')">google</div>
+            <div class="qc-chip" onclick="quickDKIM('selector1')">selector1</div>
+            <div class="qc-chip" onclick="quickDKIM('selector2')">selector2</div>
+            <div class="qc-chip" onclick="quickDKIM('ses')">ses</div>
+            <div class="qc-chip" onclick="quickDKIM('k1')">k1</div>
+            <div class="qc-chip" onclick="quickDKIM('mail')">mail</div>
+            <div class="qc-chip" onclick="quickDKIM('dkim')">dkim</div>
+            <div class="qc-chip" onclick="quickDKIM('default')">default</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+<footer>All DNS lookups run server-side. No report data is stored.</footer>
+</div>
+
+<script>
+// ── SPF ──
+async function checkSPF(domain) {
+  domain = domain || document.getElementById('spf-domain').value.trim();
+  if (!domain) return;
+  document.getElementById('spf-domain').value = domain;
+  document.getElementById('spf-loading').style.display = 'block';
+  document.getElementById('spf-error').style.display = 'none';
+  document.getElementById('spf-result').style.display = 'none';
+  try {
+    const res = await fetch('spf-lookup.php?domain=' + encodeURIComponent(domain));
+    const d = await res.json();
+    document.getElementById('spf-loading').style.display = 'none';
+    if (d.error) { showErr('spf', d.error); return; }
+    renderSPF(d);
+  } catch(e) { document.getElementById('spf-loading').style.display='none'; showErr('spf','Request failed: '+e.message); }
+}
+
+function quickSPF(domain) { document.getElementById('spf-domain').value = domain; checkSPF(domain); }
+
+function qualifierLabel(q) {
+  return {'+':'pass (✓)','-':'fail (✗)','~':'softfail (~)','?':'neutral (?)'}[q] || q;
+}
+function qualifierClass(q) {
+  return {'+':'pass','-':'fail','~':'softfail','?':'neutral'}[q] || '';
+}
+
+function renderMechanisms(mechs, depth) {
+  depth = depth || 0;
+  let html = '';
+  mechs.forEach(m => {
+    const qClass = qualifierClass(m.qualifier);
+    const qLabel = m.qualifier === '+' ? '' : m.qualifier;
+    let badge = '';
+    if (m.warning) badge = '<span class="mech-badge '+(m.warning.includes('limit')||m.warning.includes('no SPF')?'err':'warn')+'">'+m.warning+'</span>';
+    if (m.type === 'include' && m.resolved) badge += '<span class="mech-badge inc">include</span>';
+
+    const toggleId = 'mech-' + Math.random().toString(36).slice(2);
+    const hasChildren = m.resolved && m.resolved.length;
+    const toggleBtn = hasChildren ? '<span class="mech-resolved-toggle" onclick="toggleMechChildren(\''+toggleId+'\')">expand ▸</span>' : '';
+
+    html += '<div class="mech depth-'+depth+'">' +
+      (m.qualifier !== '+' ? '<span class="mech-qualifier '+qClass+'">'+m.qualifier+'</span>' : '') +
+      '<span class="mech-type">'+m.type+'</span>' +
+      (m.value ? '<span class="mech-value">:'+m.value+'</span>' : '') +
+      badge + toggleBtn +
+    '</div>';
+
+    if (hasChildren) {
+      html += '<div class="mech-children" id="'+toggleId+'">' + renderMechanisms(m.resolved, depth+1) + '</div>';
+    }
+  });
+  return html;
+}
+
+function toggleMechChildren(id) {
+  const el = document.getElementById(id);
+  const btn = el.previousElementSibling.querySelector('.mech-resolved-toggle');
+  const open = el.classList.toggle('open');
+  if (btn) btn.textContent = open ? 'collapse ▾' : 'expand ▸';
+}
+
+function renderSPF(d) {
+  const lc = d.lookup_count;
+  const lcClass = lc > 10 ? 'bad' : lc >= 8 ? 'warn' : 'ok';
+  const charClass = d.char_count > 450 ? 'warn' : 'ok';
+
+  let warnHtml = '';
+  if (d.warnings && d.warnings.length) {
+    warnHtml = '<div class="warning-list">' + d.warnings.map(w =>
+      '<div class="warning-item'+(w.toLowerCase().includes('exceed')||w.toLowerCase().includes('revok')?'':'')+'">' + w + '</div>'
+    ).join('') + '</div>';
+  }
+
+  const html =
+    '<div class="spf-raw">' + escHtml(d.raw) + '</div>' +
+    '<div class="spf-stats">' +
+      '<div class="spf-stat">DNS lookups <span class="sv '+lcClass+'">'+lc+'/10</span></div>' +
+      '<div class="spf-stat">Record length <span class="sv '+charClass+'">'+d.char_count+' chars</span></div>' +
+      '<div class="spf-stat">Mechanisms <span class="sv ok">'+d.mechanisms.length+'</span></div>' +
+    '</div>' +
+    warnHtml +
+    '<div style="font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:var(--text3);margin-bottom:6px;">Parsed mechanisms</div>' +
+    '<div class="mech-tree">' + renderMechanisms(d.mechanisms) + '</div>';
+
+  const el = document.getElementById('spf-result');
+  el.innerHTML = html;
+  el.style.display = 'block';
+}
+
+// ── DKIM ──
+async function checkDKIM(domain, selector) {
+  domain   = domain   || document.getElementById('dkim-domain').value.trim();
+  selector = selector || document.getElementById('dkim-selector').value.trim();
+  if (!domain || !selector) { showErr('dkim','Enter both a domain and a selector.'); return; }
+  document.getElementById('dkim-domain').value = domain;
+  document.getElementById('dkim-selector').value = selector;
+  document.getElementById('dkim-loading').style.display = 'block';
+  document.getElementById('dkim-error').style.display = 'none';
+  document.getElementById('dkim-result').style.display = 'none';
+  try {
+    const res = await fetch('dkim-lookup.php?domain='+encodeURIComponent(domain)+'&selector='+encodeURIComponent(selector));
+    const d = await res.json();
+    document.getElementById('dkim-loading').style.display = 'none';
+    if (d.error && !d.found) { showErr('dkim', d.error); return; }
+    renderDKIM(d);
+  } catch(e) { document.getElementById('dkim-loading').style.display='none'; showErr('dkim','Request failed: '+e.message); }
+}
+
+function quickDKIM(selector) {
+  const domain = document.getElementById('dkim-domain').value.trim() || prompt('Enter domain:','example.com');
+  if (!domain) return;
+  document.getElementById('dkim-domain').value = domain;
+  document.getElementById('dkim-selector').value = selector;
+  checkDKIM(domain, selector);
+}
+
+function renderDKIM(d) {
+  let statusCls = 'ok', statusIcon = '✓', statusText = 'DKIM record found and active';
+  if (d.revoked) { statusCls='err'; statusIcon='✗'; statusText='Key is REVOKED — p= is empty. DKIM will fail.'; }
+  else if (d.warnings && d.warnings.length) { statusCls='warn'; statusIcon='!'; statusText=d.warnings[0]; }
+
+  const bitsLabel = d.key_bits ? d.key_bits + '-bit' : 'Unknown length';
+  const bitsClass = !d.key_bits ? '' : d.key_bits >= 2048 ? 'ok' : d.key_bits >= 1024 ? 'warn' : 'bad';
+
+  let warnHtml = '';
+  if (d.warnings && d.warnings.length > 1) {
+    warnHtml = '<div class="warning-list" style="margin-bottom:10px;">' + d.warnings.slice(1).map(w =>
+      '<div class="warning-item">'+w+'</div>').join('') + '</div>';
+  }
+
+  const lookupHost = d.selector + '._domainkey.' + d.domain;
+
+  const html =
+    '<div class="dkim-status '+statusCls+'"><div class="dkim-status-icon">'+statusIcon+'</div><div>'+statusText+'</div></div>' +
+    warnHtml +
+    '<div class="dkim-fields">' +
+      '<div class="dkim-field"><div class="dkim-field-label">Lookup host</div><div class="dkim-field-value" style="color:var(--blue);font-size:10px;">'+escHtml(lookupHost)+'</div></div>' +
+      '<div class="dkim-field"><div class="dkim-field-label">Key type</div><div class="dkim-field-value">'+(d.key_type||'rsa')+'</div></div>' +
+      '<div class="dkim-field"><div class="dkim-field-label">Key strength</div><div class="dkim-field-value '+bitsClass+'">'+bitsLabel+'</div></div>' +
+      '<div class="dkim-field"><div class="dkim-field-label">Status</div><div class="dkim-field-value '+(d.revoked?'bad':'ok')+'">'+(d.revoked?'Revoked':'Active')+'</div></div>' +
+      '<div class="dkim-field"><div class="dkim-field-label">Hash algorithm</div><div class="dkim-field-value">'+(d.tags&&d.tags.h?escHtml(d.tags.h):'sha256 (default)')+'</div></div>' +
+      '<div class="dkim-field"><div class="dkim-field-label">Testing mode</div><div class="dkim-field-value '+(d.flags==='y'?'warn':'ok')+'">'+(d.flags==='y'?'Yes (t=y)':'No')+'</div></div>' +
+    '</div>' +
+    (d.raw ? '<div style="font-family:var(--mono);font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">Raw record</div><div class="dkim-raw">'+escHtml(d.raw)+'</div>' : '') +
+    (d.notes ? '<div style="font-size:12px;color:var(--text2);margin-top:6px;"><strong>Notes:</strong> '+escHtml(d.notes)+'</div>' : '');
+
+  const el = document.getElementById('dkim-result');
+  el.innerHTML = html;
+  el.style.display = 'block';
+}
+
+// ── Helpers ──
+function showErr(tool, msg) {
+  const el = document.getElementById(tool+'-error');
+  el.textContent = msg; el.style.display = 'block';
+}
+
+function escHtml(str) {
+  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Pre-fill from URL params (so report viewer can link directly)
+const params = new URLSearchParams(location.search);
+if (params.get('domain')) {
+  document.getElementById('spf-domain').value = params.get('domain');
+  document.getElementById('dkim-domain').value = params.get('domain');
+  if (params.get('selector')) {
+    document.getElementById('dkim-selector').value = params.get('selector');
+    checkDKIM(params.get('domain'), params.get('selector'));
+  } else {
+    checkSPF(params.get('domain'));
+  }
+}
+</script>
+</body>
+</html>
